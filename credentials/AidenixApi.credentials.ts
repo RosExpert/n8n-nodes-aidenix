@@ -5,7 +5,7 @@ export class AidenixApi implements ICredentialType {
 
 	displayName = 'Aidenix API';
 
-	documentationUrl = 'https://docs.aidenix.com';
+	documentationUrl = 'https://aidenix.com/api';
 
 	properties: INodeProperties[] = [
 		{
