@@ -14,10 +14,11 @@ import { v4 as uuidv4, v5 as uuidv5 } from 'uuid';
 const IDEMPOTENCY_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 const RETRYABLE_STATUSES = new Set([409, 504]);
 
-type IdempotencyStrategy = 'deterministic' | 'random';
+type IdempotencyStrategy = 'deterministic' | 'random' | 'custom';
 
 interface BusinessFitOptions {
 	idempotencyStrategy?: IdempotencyStrategy;
+	idempotencyKey?: string;
 	maxRetries?: number;
 	retryDelayMs?: number;
 }
@@ -102,7 +103,27 @@ export class Aidenix implements INodeType {
 								value: 'random',
 								description: 'New UUID v4 per item. Each run forces a fresh computation.',
 							},
+							{
+								name: 'Custom',
+								value: 'custom',
+								description:
+									'Use the value from the "Idempotency Key" field below. Useful when the key comes from an upstream node via an expression.',
+							},
 						],
+					},
+					{
+						displayName: 'Idempotency Key',
+						name: 'idempotencyKey',
+						type: 'string',
+						default: '',
+						placeholder: '={{ $json.idempotency_key }}',
+						description:
+							'Custom Idempotency-Key value. Only used when "Idempotency Key Strategy" is set to "Custom". Must be unique per logical operation; reuse with the same body returns the cached response.',
+						displayOptions: {
+							show: {
+								'/options.idempotencyStrategy': ['custom'],
+							},
+						},
 					},
 					{
 						displayName: 'Max Retries (on 409 / 504)',
@@ -169,10 +190,24 @@ export class Aidenix implements INodeType {
 			const maxRetries = options.maxRetries ?? 10;
 			const retryDelayMs = options.retryDelayMs ?? 5000;
 
-			const idempotencyKey =
-				idempotencyStrategy === 'random'
-					? uuidv4()
-					: uuidv5(`${workflowId}:${executionId}:${i}:${query}`, IDEMPOTENCY_NAMESPACE);
+			let idempotencyKey: string;
+			if (idempotencyStrategy === 'random') {
+				idempotencyKey = uuidv4();
+			} else if (idempotencyStrategy === 'custom') {
+				idempotencyKey = (options.idempotencyKey ?? '').trim();
+				if (!idempotencyKey) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Idempotency Key is required when "Idempotency Key Strategy" is "Custom".',
+						{ itemIndex: i },
+					);
+				}
+			} else {
+				idempotencyKey = uuidv5(
+					`${workflowId}:${executionId}:${i}:${query}`,
+					IDEMPOTENCY_NAMESPACE,
+				);
+			}
 
 			const requestOptions: IHttpRequestOptions = {
 				method: 'POST',
