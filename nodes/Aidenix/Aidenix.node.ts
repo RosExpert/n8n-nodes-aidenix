@@ -134,7 +134,7 @@ export class Aidenix implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const credentials = await this.getCredentials('aidenixApi');
-		const baseUrl = ((credentials.baseUrl as string) || 'https://api.aidenix.com').replace(
+		const baseUrl = ((credentials.baseUrl as string) || 'http://localhost:8080').replace(
 			/\/+$/,
 			'',
 		);
@@ -149,11 +149,9 @@ export class Aidenix implements INodeType {
 			const operation = this.getNodeParameter('operation', i) as string;
 
 			if (operation !== 'businessFit') {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Unsupported operation: ${operation}`,
-					{ itemIndex: i },
-				);
+				throw new NodeOperationError(this.getNode(), `Unsupported operation: ${operation}`, {
+					itemIndex: i,
+				});
 			}
 
 			const query = ((this.getNodeParameter('query', i) as string) ?? '').trim();
@@ -252,9 +250,11 @@ function extractStatusCode(error: unknown): number | undefined {
 		(e.response as Record<string, unknown> | undefined)?.status,
 		(e.response as Record<string, unknown> | undefined)?.statusCode,
 		(e.cause as Record<string, unknown> | undefined)?.statusCode,
-		((e.cause as Record<string, unknown> | undefined)?.response as
-			| Record<string, unknown>
-			| undefined)?.status,
+		(
+			(e.cause as Record<string, unknown> | undefined)?.response as
+				| Record<string, unknown>
+				| undefined
+		)?.status,
 	];
 
 	for (const value of candidates) {
