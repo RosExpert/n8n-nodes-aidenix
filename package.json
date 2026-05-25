@@ -1,0 +1,66 @@
+{
+	"name": "n8n-nodes-aidenix",
+	"version": "0.1.0",
+	"description": "Aidenix Business Fit node for n8n — evaluate ICP fit and generate personalized outreach for a LinkedIn slug or email.",
+	"keywords": [
+		"n8n-community-node-package",
+		"n8n",
+		"aidenix",
+		"business-fit",
+		"icp",
+		"sales",
+		"outreach",
+		"lead-qualification"
+	],
+	"license": "MIT",
+	"homepage": "https://aidenix.com",
+	"author": {
+		"name": "Aidenix",
+		"email": "support@aidenix.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/aidenix/n8n-nodes-aidenix.git"
+	},
+	"bugs": {
+		"url": "https://github.com/aidenix/n8n-nodes-aidenix/issues"
+	},
+	"engines": {
+		"node": ">=18.10"
+	},
+	"main": "dist/index.js",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc && gulp build:icons",
+		"dev": "tsc --watch",
+		"format": "prettier --write \"nodes/**/*.ts\" \"credentials/**/*.ts\"",
+		"lint": "eslint nodes credentials package.json",
+		"lintfix": "eslint nodes credentials package.json --fix",
+		"prepublishOnly": "npm run build && npm run lint"
+	},
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"credentials": [
+			"dist/credentials/AidenixApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/Aidenix/Aidenix.node.js"
+		]
+	},
+	"dependencies": {
+		"uuid": "^9.0.1"
+	},
+	"devDependencies": {
+		"@types/node": "^20.19.41",
+		"@types/uuid": "^9.0.7",
+		"@typescript-eslint/parser": "^7.15.0",
+		"eslint": "^8.57.0",
+		"eslint-plugin-n8n-nodes-base": "^1.16.3",
+		"gulp": "^4.0.2",
+		"n8n-workflow": "*",
+		"prettier": "^3.3.2",
+		"typescript": "^5.5.3"
+	}
+}
