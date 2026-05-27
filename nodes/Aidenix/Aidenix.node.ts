@@ -9,10 +9,12 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { v4 as uuidv4, v5 as uuidv5 } from 'uuid';
+import { createHash, randomUUID } from 'node:crypto';
 
 const IDEMPOTENCY_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 const RETRYABLE_STATUSES = new Set([409, 504]);
+const REQUEST_TIMEOUT_MS = 120_000;
+const LOOPBACK_HTTP_RE = /^http:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/;
 
 type IdempotencyStrategy = 'deterministic' | 'random' | 'custom';
 
@@ -155,11 +157,18 @@ export class Aidenix implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const credentials = await this.getCredentials('aidenixApi');
-		const baseUrl = ((credentials.baseUrl as string) || 'http://localhost:8080').replace(
-			/\/+$/,
-			'',
-		);
+		const baseUrl = (
+			(credentials.baseUrl as string) ||
+			process.env.AIDENIX_BASE_URL ||
+			'http://localhost:8080'
+		).replace(/\/+$/, '');
 		const apiToken = credentials.apiToken as string;
+
+		if (baseUrl.startsWith('http://') && !LOOPBACK_HTTP_RE.test(baseUrl)) {
+			this.logger.warn(
+				`[Aidenix] Base URL "${baseUrl}" is not HTTPS — API token will be transmitted in cleartext.`,
+			);
+		}
 
 		const workflowId = String(this.getWorkflow().id ?? 'workflow');
 		const executionId = String(this.getExecutionId() ?? 'execution');
@@ -192,7 +201,7 @@ export class Aidenix implements INodeType {
 
 			let idempotencyKey: string;
 			if (idempotencyStrategy === 'random') {
-				idempotencyKey = uuidv4();
+				idempotencyKey = randomUUID();
 			} else if (idempotencyStrategy === 'custom') {
 				idempotencyKey = (options.idempotencyKey ?? '').trim();
 				if (!idempotencyKey) {
@@ -202,8 +211,22 @@ export class Aidenix implements INodeType {
 						{ itemIndex: i },
 					);
 				}
+				if (idempotencyKey.length > 255) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Idempotency Key is too long (max 255 chars, got ${idempotencyKey.length}).`,
+						{ itemIndex: i },
+					);
+				}
+				if (/[\r\n\x00-\x1F]/.test(idempotencyKey)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Idempotency Key must not contain control characters.',
+						{ itemIndex: i },
+					);
+				}
 			} else {
-				idempotencyKey = uuidv5(
+				idempotencyKey = uuidV5FromString(
 					`${workflowId}:${executionId}:${i}:${query}`,
 					IDEMPOTENCY_NAMESPACE,
 				);
@@ -220,6 +243,7 @@ export class Aidenix implements INodeType {
 				},
 				body: { query },
 				json: true,
+				timeout: REQUEST_TIMEOUT_MS,
 			};
 
 			try {
@@ -247,6 +271,7 @@ export class Aidenix implements INodeType {
 				}
 				throw new NodeApiError(this.getNode(), error as JsonObject, {
 					message: 'Aidenix API request failed',
+					description: (error as Error).message,
 					itemIndex: i,
 				});
 			}
@@ -304,4 +329,14 @@ function extractStatusCode(error: unknown): number | undefined {
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function uuidV5FromString(name: string, namespace: string): string {
+	const nsBytes = Buffer.from(namespace.replace(/-/g, ''), 'hex');
+	const hash = createHash('sha1').update(nsBytes).update(name).digest();
+	const bytes = Buffer.from(hash.subarray(0, 16));
+	bytes[6] = (bytes[6] & 0x0f) | 0x50;
+	bytes[8] = (bytes[8] & 0x3f) | 0x80;
+	const hex = bytes.toString('hex');
+	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }

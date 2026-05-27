@@ -51,13 +51,9 @@
 			"dist/nodes/Aidenix/Aidenix.node.js"
 		]
 	},
-	"dependencies": {
-		"uuid": "^9.0.1"
-	},
 	"devDependencies": {
 		"@types/jest": "^29.5.14",
 		"@types/node": "^20.19.41",
-		"@types/uuid": "^9.0.7",
 		"@typescript-eslint/parser": "^7.15.0",
 		"eslint": "^8.57.0",
 		"eslint-plugin-n8n-nodes-base": "^1.16.3",
