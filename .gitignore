@@ -9,3 +9,6 @@ npm-debug.log*
 yarn-error.log*
 .vscode/
 .idea/
+
+# Internal audit notes — not for publication
+SECURITY_REVIEW.md
