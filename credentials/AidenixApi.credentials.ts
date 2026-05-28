@@ -21,9 +21,9 @@ export class AidenixApi implements ICredentialType {
 			displayName: 'Base URL',
 			name: 'baseUrl',
 			type: 'string',
-			default: 'http://localhost:8080',
-			placeholder: 'http://localhost:8080',
-			description: 'Base URL of the Aidenix API. Change only if you are on a dedicated tenant.',
+			default: 'https://api.aidenix.com',
+			placeholder: 'https://api.aidenix.com',
+			description: 'Base URL of the Aidenix API. Override only for self-hosted or dedicated tenants.',
 		},
 	];
 

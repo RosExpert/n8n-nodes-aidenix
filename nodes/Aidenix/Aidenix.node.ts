@@ -160,7 +160,7 @@ export class Aidenix implements INodeType {
 		const baseUrl = (
 			(credentials.baseUrl as string) ||
 			process.env.AIDENIX_BASE_URL ||
-			'http://localhost:8080'
+			'https://api.aidenix.com'
 		).replace(/\/+$/, '');
 		const apiToken = credentials.apiToken as string;
 
