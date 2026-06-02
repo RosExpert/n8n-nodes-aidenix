@@ -82,7 +82,11 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: 'npm ci'
+        # --legacy-peer-deps: @langchain/community (transitive via @n8n/node-cli)
+        # declares optional peer deps that npm 7+ tries to install on CI but skips
+        # locally, causing a lock file mismatch. Legacy behavior treats peers as
+        # advisory and matches the lock file generated locally.
+        run: 'npm ci --legacy-peer-deps'
 
       - name: Release
         # Publishes to npm with a provenance attestation (requires id-token: write above).
