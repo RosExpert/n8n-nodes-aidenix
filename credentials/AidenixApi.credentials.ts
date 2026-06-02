@@ -1,4 +1,10 @@
-import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	Icon,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class AidenixApi implements ICredentialType {
 	name = 'aidenixApi';
@@ -6,6 +12,8 @@ export class AidenixApi implements ICredentialType {
 	displayName = 'Aidenix API';
 
 	documentationUrl = 'https://aidenix.com/api';
+
+	icon: Icon = 'file:aidenix.svg';
 
 	properties: INodeProperties[] = [
 		{
@@ -33,6 +41,14 @@ export class AidenixApi implements ICredentialType {
 			headers: {
 				'X-API-Token': '={{$credentials.apiToken}}',
 			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.baseUrl}}',
+			url: '/api/auth/me',
+			method: 'GET',
 		},
 	};
 }

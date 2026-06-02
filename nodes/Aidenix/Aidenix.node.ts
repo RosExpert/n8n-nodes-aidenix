@@ -7,6 +7,7 @@ import {
 	INodeTypeDescription,
 	JsonObject,
 	NodeApiError,
+	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
 import { createHash, randomUUID } from 'node:crypto';
@@ -37,8 +38,9 @@ export class Aidenix implements INodeType {
 		defaults: {
 			name: 'Aidenix',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'aidenixApi',
@@ -157,11 +159,10 @@ export class Aidenix implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const credentials = await this.getCredentials('aidenixApi');
-		const baseUrl = (
-			(credentials.baseUrl as string) ||
-			process.env.AIDENIX_BASE_URL ||
-			'https://api.aidenix.com'
-		).replace(/\/+$/, '');
+		const baseUrl = ((credentials.baseUrl as string) || 'https://api.aidenix.com').replace(
+			/\/+$/,
+			'',
+		);
 		const apiToken = credentials.apiToken as string;
 
 		if (baseUrl.startsWith('http://') && !LOOPBACK_HTTP_RE.test(baseUrl)) {
@@ -218,6 +219,7 @@ export class Aidenix implements INodeType {
 						{ itemIndex: i },
 					);
 				}
+				// eslint-disable-next-line no-control-regex -- intentional: validate idempotency key contains no control chars
 				if (/[\r\n\x00-\x1F]/.test(idempotencyKey)) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -295,6 +297,7 @@ async function callWithRetry<T>(
 				await sleep(delayMs);
 				continue;
 			}
+			// eslint-disable-next-line @n8n/community-nodes/require-node-api-error -- internal retry helper; caller wraps as NodeApiError
 			throw error;
 		}
 	}
@@ -328,7 +331,10 @@ function extractStatusCode(error: unknown): number | undefined {
 }
 
 function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
+	return new Promise((resolve) => {
+		// eslint-disable-next-line @n8n/community-nodes/no-restricted-globals -- needed for retry backoff; no n8n helper available in execute context
+		setTimeout(resolve, ms);
+	});
 }
 
 function uuidV5FromString(name: string, namespace: string): string {
