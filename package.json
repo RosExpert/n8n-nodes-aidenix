@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-aidenix",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Aidenix Business Fit node for n8n — evaluate ICP fit and generate personalized outreach for a LinkedIn slug or email.",
 	"keywords": [
 		"n8n-community-node-package",
@@ -30,7 +30,8 @@
 	},
 	"main": "dist/index.js",
 	"files": [
-		"dist"
+		"dist",
+		"docs"
 	],
 	"scripts": {
 		"build": "tsc && gulp build:icons",

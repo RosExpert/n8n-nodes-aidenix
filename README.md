@@ -54,7 +54,7 @@ Use it when you need to qualify and personalize at the same time — typical lea
 ## Prerequisites
 
 - An n8n instance (Cloud or self-hosted), **n8n v1.0+ recommended**.
-- An Aidenix account and API token — sign up at [aidenix.com](https://aidenix.com), then create a token from the dashboard.
+- An Aidenix account and an API token — see [Getting an API token](#getting-an-api-token).
 - For self-hosted n8n: Node.js **18.10+** (this matches n8n's own engine requirement).
 
 ## Installation
@@ -81,7 +81,14 @@ npm install n8n-nodes-aidenix
 
 ## Credentials
 
-Create an **Aidenix API** credential in n8n:
+### Getting an API token
+
+1. Sign up or log in at [aidenix.com](https://aidenix.com).
+2. Open your **Profile → API Tokens**.
+3. Click **Generate token**, copy the value (it's shown only once — store it somewhere safe).
+4. In n8n, create a new **Aidenix API** credential and paste the token into the **API Token** field.
+
+### Credential fields
 
 | Field      | Required | Default                  | Description                                                                                   |
 | ---------- | -------- | ------------------------ | --------------------------------------------------------------------------------------------- |
