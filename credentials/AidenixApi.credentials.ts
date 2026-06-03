@@ -46,8 +46,8 @@ export class AidenixApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.baseUrl}}',
-			url: '/api/auth/me',
+			baseURL: 'https://aidenix.com',
+			url: '/api/limit',
 			method: 'GET',
 		},
 	};
