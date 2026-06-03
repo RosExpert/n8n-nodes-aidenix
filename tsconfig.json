@@ -5,7 +5,7 @@
 		"moduleResolution": "node16",
 		"target": "es2019",
 		"lib": ["es2019", "es2020"],
-		"removeComments": true,
+		"removeComments": false,
 		"useUnknownInCatchVariables": false,
 		"forceConsistentCasingInFileNames": true,
 		"noImplicitAny": true,
