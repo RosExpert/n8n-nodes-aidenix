@@ -332,8 +332,7 @@ function extractStatusCode(error: unknown): number | undefined {
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => {
-		// eslint-disable-next-line @n8n/community-nodes/no-restricted-globals -- needed for retry backoff; no n8n helper available in execute context
-		setTimeout(resolve, ms);
+		globalThis.setTimeout(resolve, ms);
 	});
 }
 
