@@ -9,6 +9,7 @@ import {
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
+	sleep,
 } from 'n8n-workflow';
 import { createHash, randomUUID } from 'node:crypto';
 
@@ -328,12 +329,6 @@ function extractStatusCode(error: unknown): number | undefined {
 		}
 	}
 	return undefined;
-}
-
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => {
-		globalThis.setTimeout(resolve, ms);
-	});
 }
 
 function uuidV5FromString(name: string, namespace: string): string {
