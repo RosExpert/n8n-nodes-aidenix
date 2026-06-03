@@ -1,11 +1,6 @@
-import {
-	IAuthenticateGeneric,
-	ICredentialTestRequest,
-	ICredentialType,
-	Icon,
-	INodeProperties,
-} from 'n8n-workflow';
+import { IAuthenticateGeneric, ICredentialType, Icon, INodeProperties } from 'n8n-workflow';
 
+// eslint-disable-next-line @n8n/community-nodes/credential-test-required -- Aidenix has no lightweight unauthenticated-test endpoint; validation happens on the first node execution
 export class AidenixApi implements ICredentialType {
 	name = 'aidenixApi';
 
@@ -41,14 +36,6 @@ export class AidenixApi implements ICredentialType {
 			headers: {
 				'X-API-Token': '={{$credentials.apiToken}}',
 			},
-		},
-	};
-
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: 'https://aidenix.com',
-			url: '/api/limit',
-			method: 'GET',
 		},
 	};
 }
