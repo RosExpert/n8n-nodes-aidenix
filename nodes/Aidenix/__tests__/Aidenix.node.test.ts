@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { Aidenix } from '../Aidenix.node';
 

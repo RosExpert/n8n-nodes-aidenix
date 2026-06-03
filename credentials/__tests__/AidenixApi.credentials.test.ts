@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { AidenixApi } from '../AidenixApi.credentials';
 
 describe('AidenixApi credentials', () => {
