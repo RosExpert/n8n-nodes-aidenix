@@ -42,4 +42,17 @@ describe('AidenixApi credentials', () => {
 	it('exposes a documentation URL', () => {
 		expect(creds.documentationUrl).toMatch(/^https?:\/\//);
 	});
+
+	it('declares a credential test that hits /api/check-token via GET', () => {
+		// n8n calls this when the user clicks "Test" in the credential modal.
+		// Must be a non-mutating, side-effect-free endpoint that does not
+		// consume quota or dispatch jobs.
+		expect(creds.test).toMatchObject({
+			request: {
+				baseURL: '={{$credentials.baseUrl}}',
+				url: '/api/check-token',
+				method: 'GET',
+			},
+		});
+	});
 });

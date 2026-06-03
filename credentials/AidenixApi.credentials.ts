@@ -44,16 +44,15 @@ export class AidenixApi implements ICredentialType {
 		},
 	};
 
+	// Powers the "Test" button in the credential modal. Hits a lightweight
+	// validation endpoint that returns 200 on a valid token, 401 otherwise.
+	// No quota is consumed and no jobs are dispatched — unlike running
+	// /business-fit/run as a probe, which would burn quota on every click.
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.baseUrl}}',
-			url: '/api/search/business-fit/run',
-			method: 'POST',
-			body: { query: 'ilya-p-065940266' },
-			headers: {
-				'Idempotency-Key': 'aidenix-credential-test-ilya-p-065940266',
-				'X-Integration-Source': 'n8n',
-			},
+			url: '/api/check-token',
+			method: 'GET',
 		},
 	};
 }
