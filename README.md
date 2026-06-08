@@ -246,7 +246,7 @@ You've set Base URL to a non-loopback `http://` host. Switch to `https://` — t
 - **Aidenix** — [aidenix.com](https://aidenix.com)
 - **API docs** — [aidenix.com/api](https://aidenix.com/api)
 - **n8n community nodes guide** — [docs.n8n.io/integrations/community-nodes](https://docs.n8n.io/integrations/community-nodes/)
-- **Issues & feature requests** — [GitHub issues](https://github.com/RosExpert/n8n-nodes-aidenix/issues)
+- **Issues & feature requests** — [GitHub issues](https://github.com/aidenixai/n8n-nodes-aidenix/issues)
 - **Email** — [info@aidenix.com](mailto:info@aidenix.com)
 
 ## License

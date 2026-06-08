@@ -20,10 +20,10 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/RosExpert/n8n-nodes-aidenix.git"
+		"url": "git+https://github.com/aidenixai/n8n-nodes-aidenix.git"
 	},
 	"bugs": {
-		"url": "https://github.com/RosExpert/n8n-nodes-aidenix/issues"
+		"url": "https://github.com/aidenixai/n8n-nodes-aidenix/issues"
 	},
 	"engines": {
 		"node": ">=18.10"
