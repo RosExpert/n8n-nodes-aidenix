@@ -4,9 +4,9 @@
 [![npm downloads](https://img.shields.io/npm/dm/n8n-nodes-aidenix.svg)](https://www.npmjs.com/package/n8n-nodes-aidenix)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 
-An [n8n](https://n8n.io) community node for [Aidenix](https://aidenix.com) — score how well a lead matches your Ideal Customer Profile and generate personalized email + LinkedIn outreach in a single workflow step.
+An [n8n](https://n8n.io) community node for [Aidenix](https://aidenix.com) — score each lead against your ICP and write a personalized first email and LinkedIn message, in your brand's voice, from real research, in a single workflow step.
 
-Drop a LinkedIn slug or an email address into the node, get back a fit score, an enriched person summary, and ready-to-send copy — no separate enrichment / scoring / copywriting steps needed.
+Drop in a LinkedIn slug or an email address. Aidenix researches the person across many data sources, scores fit against your ICP, and writes a first message that sounds like you wrote it for that one person — not a template with a name swapped in.
 
 ![Aidenix node — input parameters and the flat output it produces](./docs/screenshot1.png)
 
@@ -34,18 +34,20 @@ Drop a LinkedIn slug or an email address into the node, get back a fit score, an
 
 ## Why Aidenix
 
-Most outbound workflows in n8n stitch together 3–5 separate services: enrichment (Apollo / Clearbit), scoring (custom LLM step), copywriting (another LLM step), then a sender. Each step is a moving part — keys, rate limits, prompt tuning, retries.
+Real personalization is the hard part of outbound, and a single merge tag doesn't deliver it. A name and a title dropped into a template reads as mass-produced, and prospects ignore it.
 
-The Aidenix node collapses all of that into one call:
+Aidenix does the whole job in one node: it researches each lead across many data sources, scores fit against your ICP, and writes the first message in your brand's voice — composed from your own positioning and the lead's real context, not a snippet pasted into a template. You keep your sending tool and your strategy; Aidenix produces the message.
 
 - **Input**: `jane@acme.com` or `jane-doe-12345`
 - **Output**: fit score, person/company context, subject line, email body, LinkedIn DM, plus reasoning and Do/Don't guidance
 
-Use it when you need to qualify and personalize at the same time — typical lead-routing, SDR enablement, and event-triggered outreach flows.
+Open and licensed sources only — no traded PII, safe under GDPR and CCPA.
+
+Use it when you want genuinely personal first touches at scale, without building the research-and-writing pipeline yourself.
 
 ## Features
 
-- **Business Fit** operation — pass a LinkedIn slug or email, get an ICP fit score (0–100), a person summary, and ready-to-send email + LinkedIn copy.
+- **Business Fit** — pass a LinkedIn slug or email; get an ICP fit score (0–100), a researched person summary, and a ready-to-send email + LinkedIn message written in your brand's voice.
 - **Built-in idempotency** — deterministic `Idempotency-Key` per item, so retried executions reuse the cached server response instead of paying for a duplicate AI run.
 - **Automatic retry** on `409 in_progress` (still computing) and `504 timeout`, with configurable backoff.
 - **Standard n8n error handling** via `NodeApiError`, with full **Continue On Fail** support.
@@ -113,7 +115,7 @@ A minimal "score-and-send" workflow:
    - Subject: `={{ $json.email_subject }}`
    - Body: `={{ $json.email_message }}`
 
-That's the whole pipeline. Idempotency is on by default — re-running the workflow on the same row will reuse the cached Aidenix response instead of charging you twice.
+That's the whole pipeline. Idempotency is on by default — re-running a *failed execution* reuses the cached Aidenix response instead of paying for it twice. Running the workflow again on the same lead in a new execution is a fresh computation.
 
 ## Operations
 
