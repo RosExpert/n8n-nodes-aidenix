@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-aidenix",
-	"version": "0.1.14",
+	"version": "0.1.15",
 	"description": "Aidenix Business Fit node for n8n — score a LinkedIn slug or email against your ICP and write a personalized first email + LinkedIn message in your brand's voice, from real research.",
 	"keywords": [
 		"n8n-community-node-package",
