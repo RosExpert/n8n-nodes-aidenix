@@ -56,10 +56,41 @@ export class Aidenix implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Account Context',
+						value: 'accountContext',
+						description: 'Plan, quota left, and which ICP profile scores are weighted against',
+						action: 'Get account context',
+					},
+					{
+						name: 'Batch Results',
+						value: 'batchResults',
+						description: 'Read the analyses of a batch page by page',
+						action: 'Get batch results',
+					},
+					{
+						name: 'Batch Status',
+						value: 'batchStatus',
+						description: 'How far along a batch is — done, pending, failed, ICP 60+',
+						action: 'Get batch status',
+					},
+					{
+						name: 'Build ICP Profile',
+						value: 'buildIcpProfile',
+						description:
+							'Read a website and save it as an ICP profile. The new profile becomes the active one.',
+						action: 'Build an ICP profile from a website',
+					},
+					{
 						name: 'Business Fit',
 						value: 'businessFit',
 						description: 'Evaluate ICP fit for a contact and generate personalized outreach',
 						action: 'Evaluate business fit for a contact',
+					},
+					{
+						name: 'Company Signals',
+						value: 'companySignals',
+						description: 'The company moment behind the lead — momentum, signals, timing',
+						action: 'Profile a company',
 					},
 					{
 						name: 'Email Intel',
@@ -69,6 +100,18 @@ export class Aidenix implements INodeType {
 						action: 'Assess an email address',
 					},
 					{
+						name: 'Email Intel (Bulk)',
+						value: 'emailIntelBulk',
+						description: 'The same address check across a whole list, in one call',
+						action: 'Assess a list of addresses',
+					},
+					{
+						name: 'ICP Profiles',
+						value: 'icpProfiles',
+						description: 'The saved ICP profiles and which one is active',
+						action: 'List ICP profiles',
+					},
+					{
 						name: 'Person Signals',
 						value: 'personSignals',
 						description:
@@ -76,10 +119,16 @@ export class Aidenix implements INodeType {
 						action: 'Profile a person',
 					},
 					{
-						name: 'Company Signals',
-						value: 'companySignals',
-						description: 'The company moment behind the lead — momentum, signals, timing',
-						action: 'Profile a company',
+						name: 'Record Opt-Out',
+						value: 'optOut',
+						description: 'Record that a contact asked to be left alone',
+						action: 'Record an opt out',
+					},
+					{
+						name: 'Score a List',
+						value: 'scoreList',
+						description: 'Submit a batch of contacts for scoring and get a batch ID back',
+						action: 'Score a list of contacts',
 					},
 				],
 				default: 'businessFit',
@@ -151,6 +200,120 @@ export class Aidenix implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['companySignals'],
+					},
+				},
+			},
+			{
+				displayName: 'Emails',
+				name: 'emails',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'one@company.com, two@company.com',
+				description:
+					'Addresses to assess, separated by commas or newlines. Up to 1000 per call.',
+				displayOptions: {
+					show: {
+						operation: ['emailIntelBulk'],
+					},
+				},
+			},
+			{
+				displayName: 'Contacts',
+				name: 'items',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'jane@example.com, linkedin.com/in/john-doe',
+				description:
+					'Contacts to score, separated by commas or newlines. Up to 10000 per batch.',
+				displayOptions: {
+					show: {
+						operation: ['scoreList'],
+					},
+				},
+			},
+			{
+				displayName: 'Batch Name',
+				name: 'batchName',
+				type: 'string',
+				default: '',
+				placeholder: 'Q3 outbound',
+				description: 'Optional name so the batch is findable later',
+				displayOptions: {
+					show: {
+						operation: ['scoreList'],
+					},
+				},
+			},
+			{
+				displayName: 'Batch ID',
+				name: 'jobId',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: '={{ $json.job_id }}',
+				description: 'The batch ID returned by "Score a List"',
+				displayOptions: {
+					show: {
+						operation: ['batchStatus', 'batchResults'],
+					},
+				},
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 50,
+				typeOptions: {
+					minValue: 1,
+				},
+				description: 'Max number of results to return',
+				displayOptions: {
+					show: {
+						operation: ['batchResults'],
+					},
+				},
+			},
+			{
+				displayName: 'Cursor',
+				name: 'cursor',
+				type: 'string',
+				default: '',
+				placeholder: '={{ $json.next_cursor }}',
+				description: 'The next_cursor of the previous page. Leave empty for the first page.',
+				displayOptions: {
+					show: {
+						operation: ['batchResults'],
+					},
+				},
+			},
+			{
+				displayName: 'Website URL',
+				name: 'websiteUrl',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'https://yourcompany.com',
+				description:
+					'The site to read. The profile built from it becomes the active one, so every later score is weighted by it.',
+				displayOptions: {
+					show: {
+						operation: ['buildIcpProfile'],
+					},
+				},
+			},
+			{
+				displayName: 'Contact',
+				name: 'contact',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'jane@example.com',
+				description: 'Email, phone number, or LinkedIn URL to add to the opt-out list',
+				displayOptions: {
+					show: {
+						operation: ['optOut'],
 					},
 				},
 			},
@@ -284,14 +447,31 @@ export class Aidenix implements INodeType {
 			const operation = this.getNodeParameter('operation', i) as string;
 
 			if (operation !== 'businessFit') {
-				// Интеллект-слои — обычные GET: ни тела, ни idempotency-ключа, повтор безопасен
-				// по своей природе. Общее с business fit у них только ретрай на 504.
+				// Всё, кроме business fit, идёт одним путём: ни idempotency-ключа, ни склейки job'ов.
+				// GET безопасен на повтор по своей природе; POST'ы здесь либо читают (bulk), либо
+				// сами по себе идемпотентны (opt-out дважды не создаёт вторую запись).
 				const options = this.getNodeParameter('options', i, {}) as BusinessFitOptions;
 				const text = (name: string) =>
 					((this.getNodeParameter(name, i, '') as string) ?? '').trim();
 				const flag = (name: string) => this.getNodeParameter(name, i, false) === true;
+				const list = (name: string) =>
+					text(name)
+						.split(/[\s,;]+/)
+						.map((x) => x.trim())
+						.filter(Boolean);
+				const required = (name: string, label: string) => {
+					const v = text(name);
+					if (!v) {
+						throw new NodeOperationError(this.getNode(), `The "${label}" parameter is required.`, {
+							itemIndex: i,
+						});
+					}
+					return v;
+				};
 
 				let url: string;
+				let method: 'GET' | 'POST' = 'GET';
+				let body: IDataObject | undefined;
 				if (operation === 'emailIntel') {
 					const email = text('email');
 					if (!email) {
@@ -320,6 +500,54 @@ export class Aidenix implements INodeType {
 					url =
 						`${baseUrl}/api/company/signals/${encodeURIComponent(company)}` +
 						flagsToQuery({ relationships: flag('relationships'), enrich: flag('enrich') });
+				} else if (operation === 'emailIntelBulk') {
+					const emails = list('emails');
+					if (!emails.length) {
+						throw new NodeOperationError(this.getNode(), 'The "Emails" parameter is required.', {
+							itemIndex: i,
+						});
+					}
+					method = 'POST';
+					url = `${baseUrl}/api/email/intel/bulk`;
+					body = { emails, deliverability: flag('deliverability'), enrich: flag('enrich') };
+				} else if (operation === 'scoreList') {
+					const contacts = list('items');
+					if (!contacts.length) {
+						throw new NodeOperationError(this.getNode(), 'The "Contacts" parameter is required.', {
+							itemIndex: i,
+						});
+					}
+					method = 'POST';
+					url = `${baseUrl}/api/search/business-fit/batch/submit`;
+					body = { items: contacts };
+					const batchName = text('batchName');
+					if (batchName) body.name = batchName;
+				} else if (operation === 'batchStatus') {
+					const jobId = required('jobId', 'Batch ID');
+					url = `${baseUrl}/api/search/business-fit/batch/${encodeURIComponent(jobId)}`;
+				} else if (operation === 'batchResults') {
+					const jobId = required('jobId', 'Batch ID');
+					const params = new URLSearchParams();
+					const limit = this.getNodeParameter('limit', i, 0) as number;
+					if (limit) params.set('limit', String(limit));
+					const cursor = text('cursor');
+					if (cursor) params.set('cursor', cursor);
+					const qs = params.toString();
+					url =
+						`${baseUrl}/api/search/business-fit/batch/${encodeURIComponent(jobId)}/results` +
+						(qs ? `?${qs}` : '');
+				} else if (operation === 'accountContext') {
+					url = `${baseUrl}/api/users/me/context`;
+				} else if (operation === 'icpProfiles') {
+					url = `${baseUrl}/api/users/me/icp-profiles`;
+				} else if (operation === 'buildIcpProfile') {
+					method = 'POST';
+					url = `${baseUrl}/api/website-parser/parse`;
+					body = { website_url: required('websiteUrl', 'Website URL') };
+				} else if (operation === 'optOut') {
+					const contact = required('contact', 'Contact');
+					method = 'POST';
+					url = `${baseUrl}/api/opt_out/add?contact=${encodeURIComponent(contact)}`;
 				} else {
 					throw new NodeOperationError(this.getNode(), `Unsupported operation: ${operation}`, {
 						itemIndex: i,
@@ -330,7 +558,8 @@ export class Aidenix implements INodeType {
 					const response = await callWithRetry(
 						() =>
 							this.helpers.httpRequest({
-								method: 'GET',
+								method,
+								...(body ? { body } : {}),
 								url,
 								headers: {
 									'X-API-Token': apiToken,

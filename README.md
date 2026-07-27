@@ -51,6 +51,8 @@ Use it when you want genuinely personal first touches at scale, without building
 - **Email Intel** — check an address before you spend an analysis on it: does the mailbox accept mail, and is the person still there.
 - **Person Signals** — the career moment behind the lead: months in the seat, what they publish themselves, when to reach them. Works even when the address is dead.
 - **Company Signals** — the account moment: hiring velocity from career dates, funding and product signals, and a growth / reorg / stealth / stable verdict with the timing.
+- **Lists** — assess addresses in bulk, score a whole batch of contacts, poll its status, and read the results page by page.
+- **Account & ICP** — quota and plan, the saved ICP profiles, building a profile from a website, and recording an opt-out.
 - **Built-in idempotency** — deterministic `Idempotency-Key` per item, so retried executions reuse the cached server response instead of paying for a duplicate AI run.
 - **Automatic retry** on `409 in_progress` (still computing) and `504 timeout`, with configurable backoff.
 - **Standard n8n error handling** via `NodeApiError`, with full **Continue On Fail** support.
@@ -139,7 +141,7 @@ Evaluates ICP fit for a contact and generates personalized outreach.
 | Max Retries (409 / 504)  | 10             | Retries when the API responds with `409 in_progress` or `504 timeout`.                                                                     |
 | Retry Delay (Ms)         | 5000           | Delay between retries.                                                                                                                     |
 
-The retry options apply to every operation. The idempotency options apply to Business Fit only — the three layers below are plain `GET` requests, where a repeat is safe by nature.
+The retry options apply to every operation. The idempotency options apply to Business Fit only — every other operation either reads (a repeat is safe by nature) or is idempotent on the server side.
 
 ### Email Intel
 
@@ -172,6 +174,67 @@ The account moment behind the lead: firmographics and revenue, team makeup, hiri
 | Company       | string  | Yes      | Domain (resolved exactly) or company name (resolved heuristically).                               |
 | Relationships | boolean | No       | Expand the attention teaser into the full map: orgs the team follows, accounts influencing the buyer, internal amplifiers by role. |
 | Enrich        | boolean | No       | Add the model read of that map. Needs Relationships on; adds around 20 seconds.                   |
+
+### Email Intel (Bulk)
+
+The same address check across a whole list in one call, so a list can be triaged before any analysis is spent on it. The slow layers apply per address, so a long list with Deliverability or Enrich on takes minutes.
+
+| Parameter      | Type    | Required | Description                                                     |
+| -------------- | ------- | -------- | --------------------------------------------------------------- |
+| Emails         | string  | Yes      | Addresses separated by commas or newlines. Up to 1000 per call. |
+| Deliverability | boolean | No       | Add the SMTP layer to every address.                            |
+| Enrich         | boolean | No       | Add the dossier to every address.                               |
+
+### Score a List
+
+Submits a batch of contacts and returns a batch ID. Contacts analysed earlier come from cache and cost nothing new; duplicates inside the list are dropped before anything is spent.
+
+| Parameter  | Type   | Required | Description                                                        |
+| ---------- | ------ | -------- | ------------------------------------------------------------------ |
+| Contacts   | string | Yes      | Contacts separated by commas or newlines. Up to 10000 per batch.   |
+| Batch Name | string | No       | A name so the batch is findable later.                             |
+
+### Batch Status
+
+How far along a batch is: done, pending, failed, served from cache, and how many scored 60 or above — the list worth exporting. Poll this rather than the results page.
+
+| Parameter | Type   | Required | Description                             |
+| --------- | ------ | -------- | --------------------------------------- |
+| Batch ID  | string | Yes      | The ID returned by **Score a List**.    |
+
+### Batch Results
+
+The analyses themselves, one page at a time. Feed `next_cursor` from the previous page back into Cursor; an empty cursor means you are at the end.
+
+| Parameter | Type   | Required | Description                                     |
+| --------- | ------ | -------- | ----------------------------------------------- |
+| Batch ID  | string | Yes      | The ID returned by **Score a List**.            |
+| Limit     | number | No       | Results per page.                               |
+| Cursor    | string | No       | `next_cursor` of the previous page.             |
+
+### Account Context
+
+Plan, quota used and left, when the period resets, and which ICP profile scores are currently weighted against. Worth checking before a large batch.
+
+### ICP Profiles
+
+Every saved profile with its ID, and which one is active.
+
+### Build ICP Profile
+
+Reads a website and saves it as an ICP profile. **The new profile becomes the active one**, so every later score is weighted by it — put this at the start of a workflow deliberately, not in a loop.
+
+| Parameter   | Type   | Required | Description                        |
+| ----------- | ------ | -------- | ---------------------------------- |
+| Website URL | string | Yes      | The site to read.                  |
+
+### Record Opt-Out
+
+Records that a contact asked to be left alone. An email, a phone number, or a LinkedIn URL — recognised and stored in normalised form. Recording the same contact twice does not create a second record.
+
+| Parameter | Type   | Required | Description                                    |
+| --------- | ------ | -------- | ---------------------------------------------- |
+| Contact   | string | Yes      | Email, phone number, or LinkedIn URL.          |
 
 ## Response schema
 

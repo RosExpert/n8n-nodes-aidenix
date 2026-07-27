@@ -495,3 +495,123 @@ describe('Aidenix node — intelligence layers', () => {
 		expect(httpRequest).not.toHaveBeenCalled();
 	});
 });
+
+describe('Aidenix node — batches, account and ICP', () => {
+	it('sends the bulk list as a body, not as a path', async () => {
+		const httpRequest = jest.fn().mockResolvedValue({ count: 2, results: [] });
+		const { ctx } = createContext({
+			parameters: [
+				{
+					operation: 'emailIntelBulk',
+					emails: 'one@company.com, two@company.com',
+					enrich: true,
+				},
+			],
+			httpRequest,
+		});
+
+		await run(ctx);
+
+		const request = httpRequest.mock.calls[0][0];
+		expect(request.method).toBe('POST');
+		expect(request.url).toBe('http://localhost:8080/api/email/intel/bulk');
+		expect(request.body).toEqual({
+			emails: ['one@company.com', 'two@company.com'],
+			deliverability: false,
+			enrich: true,
+		});
+	});
+
+	it('splits the batch on commas and newlines, and keeps the name when given', async () => {
+		const httpRequest = jest.fn().mockResolvedValue({ job_id: 'b1', accepted_count: 3 });
+		const { ctx } = createContext({
+			parameters: [
+				{
+					operation: 'scoreList',
+					items: 'a@x.com,\nb@x.com; c@x.com',
+					batchName: 'Q3 outbound',
+				},
+			],
+			httpRequest,
+		});
+
+		await run(ctx);
+
+		const request = httpRequest.mock.calls[0][0];
+		expect(request.url).toBe('http://localhost:8080/api/search/business-fit/batch/submit');
+		expect(request.body).toEqual({
+			items: ['a@x.com', 'b@x.com', 'c@x.com'],
+			name: 'Q3 outbound',
+		});
+	});
+
+	it('carries limit and cursor into the results page', async () => {
+		const httpRequest = jest.fn().mockResolvedValue({ items: [], next_cursor: null });
+		const { ctx } = createContext({
+			parameters: [{ operation: 'batchResults', jobId: 'b 1', limit: 25, cursor: 'abc' }],
+			httpRequest,
+		});
+
+		await run(ctx);
+
+		expect(httpRequest.mock.calls[0][0].url).toBe(
+			'http://localhost:8080/api/search/business-fit/batch/b%201/results?limit=25&cursor=abc',
+		);
+	});
+
+	it('reads the account context with no body at all', async () => {
+		const httpRequest = jest.fn().mockResolvedValue({ request_remaining: 100 });
+		const { ctx } = createContext({
+			parameters: [{ operation: 'accountContext' }],
+			httpRequest,
+		});
+
+		await run(ctx);
+
+		const request = httpRequest.mock.calls[0][0];
+		expect(request.method).toBe('GET');
+		expect(request.url).toBe('http://localhost:8080/api/users/me/context');
+		expect(request.body).toBeUndefined();
+	});
+
+	it('passes the website through the body when building a profile', async () => {
+		const httpRequest = jest.fn().mockResolvedValue({ id: 7 });
+		const { ctx } = createContext({
+			parameters: [{ operation: 'buildIcpProfile', websiteUrl: ' https://acme.com ' }],
+			httpRequest,
+		});
+
+		await run(ctx);
+
+		const request = httpRequest.mock.calls[0][0];
+		expect(request.url).toBe('http://localhost:8080/api/website-parser/parse');
+		expect(request.body).toEqual({ website_url: 'https://acme.com' });
+	});
+
+	it('records an opt-out through the query string', async () => {
+		const httpRequest = jest.fn().mockResolvedValue({ status: 'ok' });
+		const { ctx } = createContext({
+			parameters: [{ operation: 'optOut', contact: 'jane@example.com' }],
+			httpRequest,
+		});
+
+		await run(ctx);
+
+		const request = httpRequest.mock.calls[0][0];
+		expect(request.method).toBe('POST');
+		expect(request.url).toBe(
+			'http://localhost:8080/api/opt_out/add?contact=jane%40example.com',
+		);
+	});
+
+	it('refuses an empty batch before spending the request', async () => {
+		const httpRequest = jest.fn();
+		const { ctx } = createContext({
+			parameters: [{ operation: 'scoreList', items: '  ,  ; ' }],
+			httpRequest,
+		});
+
+		await expect(run(ctx)).rejects.toBeInstanceOf(NodeOperationError);
+		expect(httpRequest).not.toHaveBeenCalled();
+	});
+});
