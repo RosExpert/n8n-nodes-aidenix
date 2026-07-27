@@ -61,6 +61,26 @@ export class Aidenix implements INodeType {
 						description: 'Evaluate ICP fit for a contact and generate personalized outreach',
 						action: 'Evaluate business fit for a contact',
 					},
+					{
+						name: 'Email Intel',
+						value: 'emailIntel',
+						description:
+							'Check whether an address is worth contacting — mailbox alive, person still there',
+						action: 'Assess an email address',
+					},
+					{
+						name: 'Person Signals',
+						value: 'personSignals',
+						description:
+							'Who the person is, what they publish, where they are in their career',
+						action: 'Profile a person',
+					},
+					{
+						name: 'Company Signals',
+						value: 'companySignals',
+						description: 'The company moment behind the lead — momentum, signals, timing',
+						action: 'Profile a company',
+					},
 				],
 				default: 'businessFit',
 			},
@@ -79,16 +99,93 @@ export class Aidenix implements INodeType {
 				},
 			},
 			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'jane@example.com',
+				description: 'Address to assess before anything is written to it',
+				displayOptions: {
+					show: {
+						operation: ['emailIntel'],
+					},
+				},
+			},
+			{
+				displayName: 'Deliverability',
+				name: 'deliverability',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to add the SMTP layer — does the mailbox accept mail. Slow, and blind on catch-all domains.',
+				displayOptions: {
+					show: {
+						operation: ['emailIntel'],
+					},
+				},
+			},
+			{
+				displayName: 'Person',
+				name: 'person',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'jane@example.com or linkedin.com/in/jane-doe-12345',
+				description:
+					'Email, LinkedIn URL or slug. Asked by email, the answer carries no name and no profile slug.',
+				displayOptions: {
+					show: {
+						operation: ['personSignals'],
+					},
+				},
+			},
+			{
+				displayName: 'Company',
+				name: 'company',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'example.com',
+				description: 'Domain (resolved exactly) or company name (resolved heuristically)',
+				displayOptions: {
+					show: {
+						operation: ['companySignals'],
+					},
+				},
+			},
+			{
+				displayName: 'Relationships',
+				name: 'relationships',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to expand the attention teaser into the full map: organizations the team follows, accounts influencing the buyer, internal amplifiers by role',
+				displayOptions: {
+					show: {
+						operation: ['companySignals'],
+					},
+				},
+			},
+			{
+				displayName: 'Enrich',
+				name: 'enrich',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to add the enrichment layer. On an address it is the dossier (age, breach exposure, domain reputation, footprint, company). On a company it is the model read of the attention map, and it needs Relationships on. Both are slow.',
+				displayOptions: {
+					show: {
+						operation: ['emailIntel', 'companySignals'],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
 				placeholder: 'Add Option',
 				default: {},
-				displayOptions: {
-					show: {
-						operation: ['businessFit'],
-					},
-				},
 				options: [
 					{
 						displayName: 'Idempotency Key Strategy',
@@ -96,6 +193,11 @@ export class Aidenix implements INodeType {
 						type: 'options',
 						default: 'deterministic',
 						description: 'How the Idempotency-Key header is generated for each item',
+						displayOptions: {
+							show: {
+								'/operation': ['businessFit'],
+							},
+						},
 						options: [
 							{
 								name: 'Deterministic (Recommended)',
@@ -126,6 +228,7 @@ export class Aidenix implements INodeType {
 							'Custom Idempotency-Key value. Only used when "Idempotency Key Strategy" is set to "Custom". Must be unique per logical operation; reuse with the same body returns the cached response.',
 						displayOptions: {
 							show: {
+								'/operation': ['businessFit'],
 								'/options.idempotencyStrategy': ['custom'],
 							},
 						},
@@ -181,9 +284,80 @@ export class Aidenix implements INodeType {
 			const operation = this.getNodeParameter('operation', i) as string;
 
 			if (operation !== 'businessFit') {
-				throw new NodeOperationError(this.getNode(), `Unsupported operation: ${operation}`, {
-					itemIndex: i,
-				});
+				// Интеллект-слои — обычные GET: ни тела, ни idempotency-ключа, повтор безопасен
+				// по своей природе. Общее с business fit у них только ретрай на 504.
+				const options = this.getNodeParameter('options', i, {}) as BusinessFitOptions;
+				const text = (name: string) =>
+					((this.getNodeParameter(name, i, '') as string) ?? '').trim();
+				const flag = (name: string) => this.getNodeParameter(name, i, false) === true;
+
+				let url: string;
+				if (operation === 'emailIntel') {
+					const email = text('email');
+					if (!email) {
+						throw new NodeOperationError(this.getNode(), 'The "Email" parameter is required.', {
+							itemIndex: i,
+						});
+					}
+					url =
+						`${baseUrl}/api/email/intel/${encodeURIComponent(email)}` +
+						flagsToQuery({ deliverability: flag('deliverability'), enrich: flag('enrich') });
+				} else if (operation === 'personSignals') {
+					const person = text('person');
+					if (!person) {
+						throw new NodeOperationError(this.getNode(), 'The "Person" parameter is required.', {
+							itemIndex: i,
+						});
+					}
+					url = `${baseUrl}/api/person/signals/${encodeURIComponent(person)}`;
+				} else if (operation === 'companySignals') {
+					const company = text('company');
+					if (!company) {
+						throw new NodeOperationError(this.getNode(), 'The "Company" parameter is required.', {
+							itemIndex: i,
+						});
+					}
+					url =
+						`${baseUrl}/api/company/signals/${encodeURIComponent(company)}` +
+						flagsToQuery({ relationships: flag('relationships'), enrich: flag('enrich') });
+				} else {
+					throw new NodeOperationError(this.getNode(), `Unsupported operation: ${operation}`, {
+						itemIndex: i,
+					});
+				}
+
+				try {
+					const response = await callWithRetry(
+						() =>
+							this.helpers.httpRequest({
+								method: 'GET',
+								url,
+								headers: {
+									'X-API-Token': apiToken,
+									'X-Integration-Source': 'n8n',
+								},
+								json: true,
+								timeout: REQUEST_TIMEOUT_MS,
+							}),
+						options.maxRetries ?? 10,
+						options.retryDelayMs ?? 5000,
+					);
+					results.push({ json: response as IDataObject, pairedItem: { item: i } });
+				} catch (error) {
+					if (this.continueOnFail()) {
+						results.push({
+							json: { error: (error as Error).message, url },
+							pairedItem: { item: i },
+						});
+						continue;
+					}
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: 'Aidenix API request failed',
+						description: (error as Error).message,
+						itemIndex: i,
+					});
+				}
+				continue;
 			}
 
 			const query = ((this.getNodeParameter('query', i) as string) ?? '').trim();
@@ -282,6 +456,15 @@ export class Aidenix implements INodeType {
 
 		return [results];
 	}
+}
+
+// Флаги передаём только когда они включены: выключенный флаг — это отсутствие параметра,
+// а не `?enrich=false`, иначе URL в логах читается как «просили обогащение».
+function flagsToQuery(flags: Record<string, boolean>): string {
+	const on = Object.entries(flags)
+		.filter(([, value]) => value)
+		.map(([name]) => `${name}=true`);
+	return on.length ? `?${on.join('&')}` : '';
 }
 
 async function callWithRetry<T>(

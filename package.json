@@ -1,7 +1,7 @@
 {
 	"name": "n8n-nodes-aidenix",
-	"version": "0.1.15",
-	"description": "Aidenix Business Fit node for n8n — score a LinkedIn slug or email against your ICP and write a personalized first email + LinkedIn message in your brand's voice, from real research.",
+	"version": "0.2.0",
+	"description": "Aidenix node for n8n — score a LinkedIn slug or email against your ICP and write personalized outreach, check whether an address is still worth contacting, and profile the person and the company behind the lead.",
 	"keywords": [
 		"n8n-community-node-package",
 		"n8n",
@@ -10,7 +10,10 @@
 		"icp",
 		"sales",
 		"outreach",
-		"lead-qualification"
+		"lead-qualification",
+		"email-verification",
+		"signals",
+		"prospecting"
 	],
 	"license": "MIT",
 	"homepage": "https://aidenix.com",

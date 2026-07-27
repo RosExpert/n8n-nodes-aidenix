@@ -5,7 +5,12 @@ import { Aidenix } from '../Aidenix.node';
 interface MockContextOverrides {
 	credentials?: { apiToken?: string; baseUrl?: string };
 	items?: Array<Record<string, unknown>>;
-	parameters?: Array<{ operation?: string; query?: string; options?: Record<string, unknown> }>;
+	parameters?: Array<{
+		operation?: string;
+		query?: string;
+		options?: Record<string, unknown>;
+		[key: string]: unknown;
+	}>;
 	workflowId?: string;
 	executionId?: string;
 	continueOnFail?: boolean;
@@ -36,6 +41,7 @@ function createContext(overrides: MockContextOverrides = {}) {
 			if (name === 'operation') return p.operation ?? 'businessFit';
 			if (name === 'query') return p.query ?? '';
 			if (name === 'options') return p.options ?? fallback ?? {};
+			if (name in p) return p[name];
 			return fallback;
 		}),
 		continueOnFail: () => overrides.continueOnFail ?? false,
@@ -419,5 +425,73 @@ describe('Aidenix node — input validation', () => {
 		});
 
 		await expect(run(ctx)).rejects.toBeInstanceOf(NodeOperationError);
+	});
+});
+
+describe('Aidenix node — intelligence layers', () => {
+	it('asks the email layer with only the flags that are on', async () => {
+		const httpRequest = jest.fn().mockResolvedValue({ verdict: 'current-likely' });
+		const { ctx } = createContext({
+			parameters: [{ operation: 'emailIntel', email: ' jane@example.com ', enrich: true }],
+			httpRequest,
+		});
+
+		const result = await run(ctx);
+
+		const request = httpRequest.mock.calls[0][0];
+		expect(request.method).toBe('GET');
+		// выключенный флаг — отсутствие параметра, а не deliverability=false
+		expect(request.url).toBe('http://localhost:8080/api/email/intel/jane%40example.com?enrich=true');
+		expect(request.headers['X-API-Token']).toBe('test-token');
+		expect(request.headers['Idempotency-Key']).toBeUndefined();
+		expect(result[0][0].json).toEqual({ verdict: 'current-likely' });
+	});
+
+	it('asks the person layer by whatever identifier it was given', async () => {
+		const httpRequest = jest.fn().mockResolvedValue({ resolved: true });
+		const { ctx } = createContext({
+			parameters: [
+				{ operation: 'personSignals', person: 'https://linkedin.com/in/jane-doe-12345' },
+			],
+			httpRequest,
+		});
+
+		await run(ctx);
+
+		expect(httpRequest.mock.calls[0][0].url).toBe(
+			'http://localhost:8080/api/person/signals/https%3A%2F%2Flinkedin.com%2Fin%2Fjane-doe-12345',
+		);
+	});
+
+	it('carries both company flags when the map and the model read are requested', async () => {
+		const httpRequest = jest.fn().mockResolvedValue({ resolved: true });
+		const { ctx } = createContext({
+			parameters: [
+				{
+					operation: 'companySignals',
+					company: 'example.com',
+					relationships: true,
+					enrich: true,
+				},
+			],
+			httpRequest,
+		});
+
+		await run(ctx);
+
+		expect(httpRequest.mock.calls[0][0].url).toBe(
+			'http://localhost:8080/api/company/signals/example.com?relationships=true&enrich=true',
+		);
+	});
+
+	it('refuses an empty identifier before spending the request', async () => {
+		const httpRequest = jest.fn();
+		const { ctx } = createContext({
+			parameters: [{ operation: 'companySignals', company: '   ' }],
+			httpRequest,
+		});
+
+		await expect(run(ctx)).rejects.toBeInstanceOf(NodeOperationError);
+		expect(httpRequest).not.toHaveBeenCalled();
 	});
 });
