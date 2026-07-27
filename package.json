@@ -1,7 +1,7 @@
 {
 	"name": "n8n-nodes-aidenix",
-	"version": "0.2.0",
-	"description": "Aidenix node for n8n — score a LinkedIn slug or email against your ICP and write personalized outreach, check whether an address is still worth contacting, and profile the person and the company behind the lead.",
+	"version": "0.3.0",
+	"description": "Aidenix node for n8n — score a contact or a whole list against your ICP and write personalized outreach, check whether addresses are still worth contacting, profile the person and the company behind the lead, and manage ICP profiles, quota and opt-outs.",
 	"keywords": [
 		"n8n-community-node-package",
 		"n8n",
