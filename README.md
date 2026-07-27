@@ -48,6 +48,9 @@ Use it when you want genuinely personal first touches at scale, without building
 ## Features
 
 - **Business Fit** — pass a LinkedIn slug or email; get an ICP fit score (0–100), a researched person summary, and a ready-to-send email + LinkedIn message written in your brand's voice.
+- **Email Intel** — check an address before you spend an analysis on it: does the mailbox accept mail, and is the person still there.
+- **Person Signals** — the career moment behind the lead: months in the seat, what they publish themselves, when to reach them. Works even when the address is dead.
+- **Company Signals** — the account moment: hiring velocity from career dates, funding and product signals, and a growth / reorg / stealth / stable verdict with the timing.
 - **Built-in idempotency** — deterministic `Idempotency-Key` per item, so retried executions reuse the cached server response instead of paying for a duplicate AI run.
 - **Automatic retry** on `409 in_progress` (still computing) and `504 timeout`, with configurable backoff.
 - **Standard n8n error handling** via `NodeApiError`, with full **Continue On Fail** support.
@@ -135,6 +138,40 @@ Evaluates ICP fit for a contact and generates personalized outreach.
 | Idempotency Key          | —              | Only used when strategy is `Custom`. Useful when the key comes from an upstream node, e.g. `={{ $json.idempotency_key }}`.                  |
 | Max Retries (409 / 504)  | 10             | Retries when the API responds with `409 in_progress` or `504 timeout`.                                                                     |
 | Retry Delay (Ms)         | 5000           | Delay between retries.                                                                                                                     |
+
+The retry options apply to every operation. The idempotency options apply to Business Fit only — the three layers below are plain `GET` requests, where a repeat is safe by nature.
+
+### Email Intel
+
+Is the address worth contacting at all. Two independent questions — does the mailbox accept mail, and is the person still there — because a live mailbox at a stale address bounces the deal, not the message. Run it before Business Fit to avoid personalizing for someone who left.
+
+| Parameter      | Type    | Required | Description                                                                                     |
+| -------------- | ------- | -------- | ----------------------------------------------------------------------------------------------- |
+| Email          | string  | Yes      | The address to assess.                                                                          |
+| Deliverability | boolean | No       | Add the SMTP layer. Slow, and blind on catch-all domains, where the person layer decides instead. |
+| Enrich         | boolean | No       | Add the dossier: address age, breach exposure, domain reputation, footprint, company card. Slow.  |
+
+Branch on `verdict` (`current-likely`, `former-person-moved`, `former-flagged-historic`, `domain-rebrand`, `personal-mailbox`, `ambiguous-generic-alias`, `unknown-not-in-data`, `uncertain`) or, more simply, on `recommendation.action` (`send`, `caution`, `verify`, `skip`).
+
+### Person Signals
+
+Who the person is and what is going on with them: role and grade, the career trajectory from dates, what they publish themselves, whose content they read, and a verdict with the career moment and how to approach it. It works even when the address is dead, because the person is resolved to their current employer.
+
+| Parameter | Type   | Required | Description                                                              |
+| --------- | ------ | -------- | ------------------------------------------------------------------------ |
+| Person    | string | Yes      | Email, LinkedIn profile URL, or slug.                                    |
+
+Asked by email, the response carries no `name` and no `slug` — turning a mailbox into an identity is exactly what this API refuses to do, and `identifiers_withheld` says so. Ask by profile URL or slug and the name comes back, since you already hold it. When `match_confidence` is `low`, check `linked_profiles`: above one, several people stand behind that address and the most corroborated was taken.
+
+### Company Signals
+
+The account moment behind the lead: firmographics and revenue, team makeup, hiring velocity from career dates (which catches layoffs a static card misses), activity signals, geo footprint, and a `growth` / `reorg` / `stealth` / `stable` verdict with the outreach timing. Employee names are never returned — only business signals. One call per account covers every lead from it.
+
+| Parameter     | Type    | Required | Description                                                                                       |
+| ------------- | ------- | -------- | --------------------------------------------------------------------------------------------------- |
+| Company       | string  | Yes      | Domain (resolved exactly) or company name (resolved heuristically).                               |
+| Relationships | boolean | No       | Expand the attention teaser into the full map: orgs the team follows, accounts influencing the buyer, internal amplifiers by role. |
+| Enrich        | boolean | No       | Add the model read of that map. Needs Relationships on; adds around 20 seconds.                   |
 
 ## Response schema
 
