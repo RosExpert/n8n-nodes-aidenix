@@ -87,6 +87,13 @@ export class Aidenix implements INodeType {
 						action: 'Evaluate business fit for a contact',
 					},
 					{
+						name: 'Company People',
+						value: 'companyPeople',
+						description:
+							'The team of a company with the work addresses to reach them, ranked by who decides',
+						action: 'Get the people of a company',
+					},
+					{
 						name: 'Company Signals',
 						value: 'companySignals',
 						description: 'The company moment behind the lead — momentum, signals, timing',
@@ -196,10 +203,38 @@ export class Aidenix implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'example.com',
-				description: 'Domain (resolved exactly) or company name (resolved heuristically)',
+				description: 'Domain, LinkedIn company URL/slug, or name. A company often has several LinkedIn pages — all of its own go into the slice.',
 				displayOptions: {
 					show: {
-						operation: ['companySignals'],
+						operation: ['companySignals', 'companyPeople'],
+					},
+				},
+			},
+			{
+				displayName: 'Roles',
+				name: 'roles',
+				type: 'string',
+				default: '',
+				placeholder: 'founder,ceo',
+				description:
+					'Comma-separated role filter — the people who answer cold email: founder, ceo, cto, cpo, cxo, product, growth, sales. Leave empty for the whole team.',
+				displayOptions: {
+					show: {
+						operation: ['companyPeople'],
+					},
+				},
+			},
+			{
+				displayName: 'Top',
+				name: 'top',
+				type: 'number',
+				default: 25,
+				typeOptions: { minValue: 1, maxValue: 200 },
+				description:
+					'How many people to return by name. The metrics always describe the whole team behind those rows.',
+				displayOptions: {
+					show: {
+						operation: ['companyPeople'],
 					},
 				},
 			},
@@ -500,6 +535,22 @@ export class Aidenix implements INodeType {
 					url =
 						`${baseUrl}/api/company/signals/${encodeURIComponent(company)}` +
 						flagsToQuery({ relationships: flag('relationships'), enrich: flag('enrich') });
+				} else if (operation === 'companyPeople') {
+					const company = text('company');
+					if (!company) {
+						throw new NodeOperationError(this.getNode(), 'The "Company" parameter is required.', {
+							itemIndex: i,
+						});
+					}
+					const params = new URLSearchParams();
+					const roles = text('roles');
+					if (roles) params.set('roles', roles);
+					const top = this.getNodeParameter('top', i, 25) as number;
+					if (top) params.set('top', String(top));
+					const query = params.toString();
+					url =
+						`${baseUrl}/api/company/people/${encodeURIComponent(company)}` +
+						(query ? `?${query}` : '');
 				} else if (operation === 'emailIntelBulk') {
 					const emails = list('emails');
 					if (!emails.length) {

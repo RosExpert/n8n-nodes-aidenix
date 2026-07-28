@@ -484,6 +484,22 @@ describe('Aidenix node — intelligence layers', () => {
 		);
 	});
 
+	it('asks for the team with the role filter and the row cap on the query', async () => {
+		const httpRequest = jest.fn().mockResolvedValue({ resolved: true });
+		const { ctx } = createContext({
+			parameters: [
+				{ operation: 'companyPeople', company: 'lemlist.com', roles: 'founder,ceo', top: 10 },
+			],
+			httpRequest,
+		});
+
+		await run(ctx);
+
+		expect(httpRequest.mock.calls[0][0].url).toBe(
+			'http://localhost:8080/api/company/people/lemlist.com?roles=founder%2Cceo&top=10',
+		);
+	});
+
 	it('refuses an empty identifier before spending the request', async () => {
 		const httpRequest = jest.fn();
 		const { ctx } = createContext({
